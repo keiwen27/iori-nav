@@ -5,9 +5,11 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "NAV_DB"
 database_name = "book"
+database_id = ""
 
 [[kv_namespaces]]
 binding = "NAV_AUTH"
+id = ""
 
 [vars]
 ICON_API = "https://icon.iori.nyc.mn/?domain="
