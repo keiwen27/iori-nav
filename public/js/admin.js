@@ -119,15 +119,17 @@ if (editBookmarkForm) {
     }).then(res => res.json())
       .then(data => {
         if (data.code === 200) {
-          showMessage('修改成功', 'success');
-          fetchConfigs();
-          editBookmarkModal.style.display = 'none';
+          showModalMessage('editBookmarkModal', '修改成功', 'success');
+          setTimeout(() => {
+            fetchConfigs();
+            editBookmarkModal.style.display = 'none';
+          }, 1000);
         } else {
-          showMessage(data.message, 'error');
+          showModalMessage('editBookmarkModal', data.message, 'error');
         }
       }).catch(err => {
         console.error('网络错误:', err);
-        showMessage('网络错误', 'error');
+        showModalMessage('editBookmarkModal', '网络错误', 'error');
       })
   });
 }
@@ -390,6 +392,30 @@ function handleDelete(id) {
     }).catch(err => {
       showMessage('网络错误', 'error');
     })
+}
+
+function showModalMessage(modalId, message, type) {
+  let containerId = '';
+  if (modalId === 'addBookmarkModal') containerId = 'addBookmarkMessage';
+  else if (modalId === 'editBookmarkModal') containerId = 'editBookmarkMessage';
+  else return; // Unknown modal
+
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.textContent = message;
+    container.className = 'modal-message ' + type;
+    container.style.display = 'block';
+    
+    // Auto hide success/info messages after 3 seconds
+    if (type === 'success' || type === 'info') {
+      setTimeout(() => {
+        container.style.display = 'none';
+      }, 3000);
+    }
+  } else {
+    // Fallback to global message
+    showMessage(message, type);
+  }
 }
 
 function showMessage(message, type) {
@@ -1001,7 +1027,7 @@ if (addBookmarkForm) {
     const sortOrder = document.getElementById('addBookmarkSortOrder').value;
 
     if (!name || !url || !catelogId) {
-      showMessage('名称, URL 和分类为必填项', 'error');
+      showModalMessage('addBookmarkModal', '名称, URL 和分类为必填项', 'error');
       return;
     }
 
@@ -1026,15 +1052,17 @@ if (addBookmarkForm) {
     }).then(res => res.json())
       .then(data => {
         if (data.code === 201) {
-          showMessage('添加成功', 'success');
-          addBookmarkModal.style.display = 'none';
-          addBookmarkForm.reset();
-          fetchConfigs();
+          showModalMessage('addBookmarkModal', '添加成功', 'success');
+          setTimeout(() => {
+             addBookmarkModal.style.display = 'none';
+             addBookmarkForm.reset();
+             fetchConfigs();
+          }, 1000);
         } else {
-          showMessage(data.message, 'error');
+          showModalMessage('addBookmarkModal', data.message, 'error');
         }
       }).catch(err => {
-        showMessage('网络错误', 'error');
+        showModalMessage('addBookmarkModal', '网络错误', 'error');
       });
   });
 }
@@ -1053,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveBtn = document.getElementById('saveAiSettingsBtn');
 
   // Provider Elements
-  const providerButtons = document.querySelectorAll('.provider-btn');
+  const providerSelector = document.getElementById('providerSelector');
   const baseUrlGroup = document.getElementById('baseUrlGroup');
 
   // Form Inputs
@@ -1070,10 +1098,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const progressCounter = document.getElementById('progressCounter');
 
   let currentAIConfig = {
-    provider: 'gemini',
+    provider: 'workers-ai',
     apiKey: '',
     baseUrl: '',
-    model: 'gemini-1.5-flash'
+    model: '@cf/meta/llama-3-8b-instruct'
   };
 
   let shouldStopBulkGeneration = false;
@@ -1122,14 +1150,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  providerButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      providerButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentAIConfig.provider = btn.dataset.provider;
+  if (providerSelector) {
+    providerSelector.addEventListener('change', () => {
+      currentAIConfig.provider = providerSelector.value;
       updateUIFromConfig();
     });
-  });
+  }
 
   saveBtn.addEventListener('click', () => {
     currentAIConfig.apiKey = apiKeyInput.value.trim();
@@ -1152,6 +1178,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedConfig = localStorage.getItem('ai_settings');
     if (savedConfig) {
       currentAIConfig = JSON.parse(savedConfig);
+      // Ensure provider is valid (handle legacy config)
+      if (!['gemini', 'openai', 'workers-ai'].includes(currentAIConfig.provider)) {
+          currentAIConfig.provider = 'workers-ai';
+      }
     }
   }
 
@@ -1160,26 +1190,71 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateUIFromConfig() {
-    providerButtons.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.provider === currentAIConfig.provider);
-    });
+    if (providerSelector) {
+        providerSelector.value = currentAIConfig.provider;
+    }
+
+    const provider = currentAIConfig.provider;
     apiKeyInput.value = currentAIConfig.apiKey || '';
     baseUrlInput.value = currentAIConfig.baseUrl || '';
-    modelNameInput.value = currentAIConfig.model || (currentAIConfig.provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-3.5-turbo');
-    modelNameInput.placeholder = currentAIConfig.provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-3.5-turbo';
-    baseUrlGroup.style.display = currentAIConfig.provider === 'openai' ? 'block' : 'none';
+
+    // Show/Hide Inputs based on Provider
+    if (provider === 'workers-ai') {
+        apiKeyInput.parentElement.style.display = 'none';
+        baseUrlGroup.style.display = 'none';
+        modelNameInput.parentElement.style.display = 'none'; // Configured via env var
+    } else {
+        apiKeyInput.parentElement.style.display = 'block';
+        modelNameInput.parentElement.style.display = 'block';
+
+        if (provider === 'gemini') {
+            modelNameInput.value = currentAIConfig.model || 'gemini-1.5-flash';
+            modelNameInput.placeholder = 'gemini-1.5-flash';
+            baseUrlGroup.style.display = 'none';
+        } else if (provider === 'openai') {
+            modelNameInput.value = currentAIConfig.model || 'gpt-3.5-turbo';
+            modelNameInput.placeholder = 'gpt-3.5-turbo';
+            baseUrlGroup.style.display = 'block';
+        }
+    }
   }
 
   // --- AI Call Logic (Frontend) ---
-  async function getAIDescription(aiConfig, bookmark) {
+  async function getAIDescription(aiConfig, bookmark, generateName = false) {
     const { provider, apiKey, baseUrl, model } = aiConfig;
     const { name, url } = bookmark;
 
-    const systemPrompt = "You are a helpful assistant that generates concise and accurate descriptions for bookmarks.";
-    const userPrompt = `为以下书签生成一个简洁的中文描述（不超过30字）。书签名称：'${name}'，链接：'${url}'`;
+    let systemPrompt, userPrompt;
+    if (generateName) {
+        systemPrompt = "You are a helpful assistant. You must response with valid JSON.";
+        userPrompt = `分析链接：'${url}'。请生成一个简短的网站名称（name，不超过10字）和中文简介（description，不超过30字）。请严格只返回 JSON 格式，例如：{"name": "名称", "description": "简介"}。`;
+    } else {
+        systemPrompt = "You are a helpful assistant that generates concise and accurate descriptions for bookmarks.";
+        userPrompt = `为以下书签生成一个简洁的中文描述（不超过30字）。请直接返回描述内容，不要包含"书签名称"、"描述"等前缀，也不要使用"标题: 描述"的格式。书签名称：'${name}'，链接：'${url}'`;
+    }
+
+    let responseText = '';
 
     try {
-      if (provider === 'gemini') {
+      if (provider === 'workers-ai') {
+          const response = await fetch('/api/ai-chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  messages: [
+                      { role: "system", content: systemPrompt },
+                      { role: "user", content: userPrompt }
+                  ]
+              })
+          });
+          if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Workers AI error: ${errorText}`);
+          }
+          const data = await response.json();
+          responseText = typeof data.data === 'string' ? data.data : (data.data.response || JSON.stringify(data.data));
+
+      } else if (provider === 'gemini') {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const response = await fetch(geminiUrl, {
           method: 'POST',
@@ -1194,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(`Gemini API error (${response.status}): ${errorBody}`);
         }
         const data = await response.json();
-        return data.candidates[0].content.parts[0].text.trim();
+        responseText = data.candidates[0].content.parts[0].text.trim();
       } else if (provider === 'openai') {
         const openaiUrl = `${baseUrl}/v1/chat/completions`;
         const response = await fetch(openaiUrl, {
@@ -1218,10 +1293,23 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(`OpenAI API error (${response.status}): ${errorBody}`);
         }
         const data = await response.json();
-        return data.choices[0].message.content.trim();
+        responseText = data.choices[0].message.content.trim();
       } else {
         throw new Error('Unsupported AI provider');
       }
+
+      if (generateName) {
+          try {
+             const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+             return JSON.parse(jsonStr);
+          } catch (e) {
+             console.warn('JSON parse failed, returning raw text as description', e);
+             return { description: responseText, name: '' };
+          }
+      } else {
+          return { description: responseText, name: '' };
+      }
+
     } catch (error) {
       console.error('AI description generation failed:', error);
       throw error;
@@ -1234,13 +1322,16 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAIConfig.baseUrl = baseUrlInput.value.trim();
     currentAIConfig.model = modelNameInput.value.trim();
 
-    if (!currentAIConfig.apiKey || !currentAIConfig.model) {
-      showMessage('请先配置 API Key 和模型名称', 'error');
-      return;
-    }
-    if (currentAIConfig.provider === 'openai' && !currentAIConfig.baseUrl) {
-        showMessage('使用 OpenAI 兼容模式时，Base URL 是必填项', 'error');
-        return;
+    // Validation
+    if (currentAIConfig.provider !== 'workers-ai') {
+        if (!currentAIConfig.apiKey || !currentAIConfig.model) {
+            showMessage('请先配置 API Key 和模型名称', 'error');
+            return;
+        }
+        if (currentAIConfig.provider === 'openai' && !currentAIConfig.baseUrl) {
+            showMessage('使用 OpenAI 兼容模式时，Base URL 是必填项', 'error');
+            return;
+        }
     }
 
     showMessage('正在扫描所有书签，请稍候...', 'info');
@@ -1285,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const link = linksToUpdate[i];
       
       try {
-        const description = await getAIDescription(currentAIConfig, link);
+        const { description } = await getAIDescription(currentAIConfig, link);
         const updateResponse = await fetch('/api/update-description', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1345,5 +1436,68 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     shouldStopBulkGeneration = false;
+  }
+
+  // --- Individual AI Generation (Add/Edit) ---
+  const addBookmarkAiBtn = document.getElementById('addBookmarkAiBtn');
+  const editBookmarkAiBtn = document.getElementById('editBookmarkAiBtn');
+
+  async function handleSingleGenerate(nameInputId, urlInputId, descInputId, btnId, modalId) {
+    const name = document.getElementById(nameInputId).value.trim();
+    const url = document.getElementById(urlInputId).value.trim();
+    const descInput = document.getElementById(descInputId);
+    const btn = document.getElementById(btnId);
+
+    if (!url) {
+      showModalMessage(modalId, '请先填写 URL', 'error');
+      return;
+    }
+
+    // Ensure config is loaded
+    loadConfig();
+    
+    // Check if AI is configured (if not workers-ai, need key)
+    if (currentAIConfig.provider !== 'workers-ai' && !currentAIConfig.apiKey) {
+         showModalMessage(modalId, '请先在 AI 设置中配置 API Key', 'error');
+         return;
+    }
+
+    // Loading State
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<div class="ai-spinner"></div>';
+    btn.disabled = true;
+
+    showModalMessage(modalId, '正在生成描述...', 'info');
+    try {
+      // Create a temporary object to match the expected structure
+      const generateName = !name;
+      const bookmark = { name: name || '未命名', url: url };
+      const result = await getAIDescription(currentAIConfig, bookmark, generateName);
+      
+      descInput.value = result.description;
+      if (generateName && result.name) {
+          document.getElementById(nameInputId).value = result.name;
+      }
+      showModalMessage(modalId, '生成成功', 'success');
+    } catch (error) {
+      console.error(error);
+      showModalMessage(modalId, '生成失败: ' + error.message, 'error');
+    } finally {
+        // Restore State
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    }
+  }
+
+  if (addBookmarkAiBtn) {
+    addBookmarkAiBtn.addEventListener('click', () => {
+      handleSingleGenerate('addBookmarkName', 'addBookmarkUrl', 'addBookmarkDesc', 'addBookmarkAiBtn', 'addBookmarkModal');
+    });
+  }
+
+  if (editBookmarkAiBtn) {
+    editBookmarkAiBtn.addEventListener('click', () => {
+      handleSingleGenerate('editBookmarkName', 'editBookmarkUrl', 'editBookmarkDesc', 'editBookmarkAiBtn', 'editBookmarkModal');
+    });
   }
 });

@@ -68,6 +68,7 @@
         <div class="modal-content">
           <span class="modal-close" id="closeBookmarkModal">×</span>
           <h2>新增书签</h2>
+          <div id="addBookmarkMessage" class="modal-message" style="display:none;"></div>
           <form id="addBookmarkForm">
             <div class="form-group">
               <label for="addBookmarkName">名称:</label>
@@ -84,6 +85,9 @@
             <div class="form-group">
               <label for="addBookmarkDesc">描述(可选):</label>
               <input type="text" id="addBookmarkDesc" />
+              <button type="button" id="addBookmarkAiBtn" class="ai-generate-btn" title="AI 生成描述">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              </button>
             </div>
             <div class="form-group">
               <label for="addBookmarkCatelog">分类:</label>
@@ -108,6 +112,7 @@
         <div class="modal-content">
           <span class="modal-close" id="closeEditBookmarkModal">×</span>
           <h2>编辑书签</h2>
+          <div id="editBookmarkMessage" class="modal-message" style="display:none;"></div>
           <form id="editBookmarkForm">
             <input type="hidden" name="id" id="editBookmarkId" />
             <div class="form-group">
@@ -125,6 +130,9 @@
             <div class="form-group">
               <label for="editBookmarkDesc">描述(可选):</label>
               <input type="text" name="desc" id="editBookmarkDesc" />
+              <button type="button" id="editBookmarkAiBtn" class="ai-generate-btn" title="AI 生成描述">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              </button>
             </div>
             <div class="form-group">
               <label for="editBookmarkCatelog">分类:</label>
@@ -171,11 +179,12 @@
           <div class="modal-body">
             <!-- AI 设置内容 -->
             <div>
-              <label class="form-label">API 提供商</label>
-              <div class="provider-selector">
-                <button data-provider="gemini" class="provider-btn active">Google Gemini</button>
-                <button data-provider="openai" class="provider-btn">OpenAI 兼容</button>
-              </div>
+              <label class="form-label" for="providerSelector">API 提供商</label>
+              <select id="providerSelector" class="form-input" style="margin-bottom: 1rem;">
+                <option value="workers-ai">Cloudflare Workers AI (推荐)</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="openai">OpenAI 兼容</option>
+              </select>
             </div>
 
             <div class="form-group-stack">
