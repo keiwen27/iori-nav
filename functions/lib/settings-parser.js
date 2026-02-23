@@ -34,7 +34,6 @@ const SETTINGS_SCHEMA = {
     layout_grid_cols: { default: '4', type: 'string' },
     layout_custom_wallpaper: { default: '', type: 'string' },
     layout_menu_layout: { default: 'horizontal', type: 'string' },
-    layout_random_wallpaper: { default: false, type: 'bool' },
     bing_country: { default: '', type: 'string' },
     layout_enable_frosted_glass: { default: false, type: 'bool' },
     layout_frosted_glass_intensity: { default: '15', type: 'string' },

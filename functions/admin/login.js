@@ -1,6 +1,6 @@
 // functions/admin/login.js
 
-import { timingSafeEqual, checkLoginRateLimit, recordLoginFailure, clearLoginFailures } from '../_middleware';
+import { timingSafeEqual, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, buildSessionCookie } from '../_middleware';
 
 function escapeHTML(str) {
   if (!str) return '';
@@ -16,11 +16,6 @@ async function createAdminSession(env, ttl = 86400) {
   const token = crypto.randomUUID();
   await env.NAV_AUTH.put(`session_${token}`, Date.now().toString(), { expirationTtl: ttl });
   return token;
-}
-
-function buildSessionCookie(token, options = {}) {
-  const maxAge = options.maxAge !== undefined ? options.maxAge : 86400;
-  return `admin_session=${token}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 }
 
 // 暴力破解防护配置

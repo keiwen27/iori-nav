@@ -3,7 +3,6 @@ import { isAdminAuthenticated } from './_middleware';
 import { FONT_MAP, SCHEMA_VERSION } from './constants';
 import { escapeHTML, sanitizeUrl, normalizeSortOrder, getStyleStr } from './lib/utils';
 import { getSettingsKeys, parseSettings } from './lib/settings-parser';
-import { fetchRandomWallpaper } from './lib/wallpaper-fetcher';
 import { renderHorizontalMenu, renderVerticalMenu } from './lib/menu-renderer';
 import { renderSiteCards, renderEmptyState } from './lib/card-renderer';
 
@@ -181,19 +180,8 @@ export async function onRequest(context) {
     ? allSites.filter(site => targetCategoryIds.includes(site.catelog_id))
     : allSites;
 
-  // === 7. 获取随机壁纸 ===
-  if (S.layout_random_wallpaper) {
-    const wallpaperMatch = cookies.match(/wallpaper_index=(\d+)/);
-    const currentWallpaperIndex = wallpaperMatch ? parseInt(wallpaperMatch[1]) : -1;
-    const result = await fetchRandomWallpaper({
-      wallpaperSource: S.wallpaper_source,
-      wallpaperCid360: S.wallpaper_cid_360,
-      bingCountry: S.bing_country,
-      currentWallpaperIndex
-    });
-    if (result) S.layout_custom_wallpaper = result.url;
-  }
-
+  // === 7. 壁纸处理 ===
+  // 壁纸 URL 直接使用设置中的 layout_custom_wallpaper，可被 KV 正常缓存
   const isCustomWallpaper = Boolean(S.layout_custom_wallpaper);
   const themeClass = isCustomWallpaper ? 'custom-wallpaper' : '';
 
@@ -464,9 +452,7 @@ export async function onRequest(context) {
     window.IORI_LAYOUT_CONFIG = {
       hideDesc: ${S.layout_hide_desc}, hideLinks: ${S.layout_hide_links}, hideCategory: ${S.layout_hide_category},
       gridCols: "${S.layout_grid_cols}", cardStyle: "${S.layout_card_style}",
-      enableFrostedGlass: ${S.layout_enable_frosted_glass}, rememberLastCategory: ${S.home_remember_last_category},
-      randomWallpaper: ${S.layout_random_wallpaper}, wallpaperSource: "${S.wallpaper_source}",
-      wallpaperCid360: "${S.wallpaper_cid_360}", bingCountry: "${S.bing_country}"
+      enableFrostedGlass: ${S.layout_enable_frosted_glass}, rememberLastCategory: ${S.home_remember_last_category}
     };
   </script></head>`);
 

@@ -1,37 +1,19 @@
-async function validateAdminSession(request, env) {
-  const cookie = request.headers.get('Cookie');
-  if (!cookie) return { authenticated: false };
-  
-  const match = cookie.match(/admin_session=([^;]+)/);
-  if (!match) return { authenticated: false };
-  
-  const token = match[1];
-  const session = await env.NAV_AUTH.get(`session_${token}`);
-  
-  return session ? { authenticated: true, token } : { authenticated: false };
-}
+// functions/admin/logout.js
 
-async function destroyAdminSession(env, token) {
-  await env.NAV_AUTH.delete(`session_${token}`);
-}
-
-function buildSessionCookie(token, options = {}) {
-  const maxAge = options.maxAge !== undefined ? options.maxAge : 86400;
-  return `admin_session=${token}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=Lax`;
-}
+import { getSessionToken, buildSessionCookie } from '../_middleware';
 
 export async function onRequest(context) {
   const { request, env } = context;
-  
+
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
-  
-  const { token } = await validateAdminSession(request, env);
+
+  const token = getSessionToken(request);
   if (token) {
-    await destroyAdminSession(env, token);
+    await env.NAV_AUTH.delete(`session_${token}`);
   }
-  
+
   return new Response(null, {
     status: 302,
     headers: {

@@ -15,13 +15,13 @@ export function isSubmissionEnabled(env) {
 export async function isAdminAuthenticated(request, env) {
   const cookie = request.headers.get('Cookie');
   if (!cookie) return false;
-  
+
   const match = cookie.match(/admin_session=([^;]+)/);
   if (!match) return false;
-  
+
   const token = match[1];
   const session = await env.NAV_AUTH.get(`session_${token}`);
-  
+
   return Boolean(session);
 }
 
@@ -45,10 +45,30 @@ export async function clearHomeCache(env) {
       env.NAV_AUTH.delete('home_html_public'),
       env.NAV_AUTH.delete('home_html_private')
     ]);
-    console.log('Home cache cleared');
   } catch (e) {
     console.error('Failed to clear home cache:', e);
   }
+}
+
+/**
+ * 构建 session cookie 字符串
+ * @param {string} token - session token
+ * @param {object} options - { maxAge: number }
+ */
+export function buildSessionCookie(token, options = {}) {
+  const maxAge = options.maxAge !== undefined ? options.maxAge : 86400;
+  return `admin_session=${token}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
+/**
+ * 从请求 Cookie 中提取 session token
+ * @returns {string|null}
+ */
+export function getSessionToken(request) {
+  const cookie = request.headers.get('Cookie');
+  if (!cookie) return null;
+  const match = cookie.match(/admin_session=([^;]+)/);
+  return match ? match[1] : null;
 }
 
 /**
@@ -170,11 +190,11 @@ async function initializeDb(db, kv) {
     const statements = DB_SCHEMA.split(';')
       .map(s => s.trim())
       .filter(s => s.length > 0);
-      
+
     const preparedStatements = statements.map(stmt => db.prepare(stmt));
-    
+
     await db.batch(preparedStatements);
-    
+
     // 3. 标记初始化完成
     dbInitialized = true;
     if (kv) {
@@ -196,7 +216,7 @@ export async function onRequest(context) {
   if (context.env.NAV_DB) {
     await initializeDb(context.env.NAV_DB, context.env.NAV_AUTH);
   }
-  
+
   // 在这里可以添加全局中间件逻辑
   // 例如: 日志记录、CORS 头等
   return context.next();
